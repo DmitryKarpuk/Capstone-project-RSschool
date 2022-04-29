@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "9 homework for RS School Machine LEarning course"
 authors = ["dimakarpuk22 <dimakarpuk22@gmail.com>"]
 
+[tool.black]
+line-length = 80
+
 [tool.poetry.scripts]
 train = "forest_ml.train:train"
 
