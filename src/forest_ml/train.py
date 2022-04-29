@@ -77,11 +77,17 @@ def train(
     f1 = cv_results["test_f1_weighted"].max()
     roc_auc = cv_results["test_roc_auc_ovr"].max()
     if key_metric == "accuracy":
-        estimator = cv_results["estimator"][np.argmax(cv_results["test_accuracy"])]
+        estimator = cv_results["estimator"][
+            np.argmax(cv_results["test_accuracy"])
+        ]
     elif key_metric == "f1":
-        estimator = cv_results["estimator"][np.armax(cv_results["test_f1_weighted"])]
+        estimator = cv_results["estimator"][
+            np.armax(cv_results["test_f1_weighted"])
+        ]
     elif key_metric == "roc_auc":
-        estimator = cv_results["estimator"][np.argmax(cv_results["test_roc_auc_ovr"])]
+        estimator = cv_results["estimator"][
+            np.argmax(cv_results["test_roc_auc_ovr"])
+        ]
     click.echo(click.style("<<Metrics>>", fg="green"))
     click.echo(f"Accuracy: {accuracy}")
     click.echo(f"F1: {f1}")
