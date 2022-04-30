@@ -9,7 +9,10 @@ import pandas as pd
 import numpy as np
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+
+from forest_ml.data import *
 
 from . import __version__
 
@@ -35,20 +38,6 @@ mlflow.set_tracking_uri('http://localhost:5000')
 @click.option("--min-samples_split", default=2, type=int, show_default=True)
 @click.option("--min-samples-leaf", default=2, type=int, show_default=True)
 @click.option(
-    "--key-metric",
-    default="accuracy",
-    type=str,
-    show_default=True,
-    help="Metric for select estimator",
-)
-# @click.option(
-#     "--cross-val-type",
-#     default='K-fold',
-#     type=str,
-#     show_default=True,
-#     help='Type of cross validation'
-# )
-@click.option(
     "--cv",
     default=5,
     type=int,
@@ -63,39 +52,38 @@ def train(
     max_depth: int,
     min_samples_split: int,
     min_samples_leaf: int,
-    cv: int,
-    key_metric: str,
+    cv: int
 ) -> None:
-    df = pd.read_csv(dataset_path, index_col="Id")
-    X = df.iloc[:, :-1]
-    y = df.iloc[:, -1]
-    scorring = ("accuracy", "f1_weighted", "roc_auc_ovr")
     with mlflow.start_run():
-        clf = RandomForestClassifier(
+        model = RandomForestClassifier(
             n_estimators=n_estimators,
             random_state=random_state,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
         )
-        cv_results = cross_validate(
-            clf, X, y, cv=cv, scoring=scorring, return_estimator=True
-        )
-        accuracy = cv_results["test_accuracy"].max()
-        f1 = cv_results["test_f1_weighted"].max()
-        roc_auc = cv_results["test_roc_auc_ovr"].max()
-        if key_metric == "accuracy":
-            estimator = cv_results["estimator"][
-                np.argmax(cv_results["test_accuracy"])
-            ]
-        elif key_metric == "f1":
-            estimator = cv_results["estimator"][
-                np.argmax(cv_results["test_f1_weighted"])
-            ]
-        elif key_metric == "roc_auc":
-            estimator = cv_results["estimator"][
-                np.argmax(cv_results["test_roc_auc_ovr"])
-            ]
+        cross_vall = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+        acc_scores = np.array([])
+        f1_scores = np.array([])
+        roc_auc_scores = np.array([])
+        data_df = get_data(dataset_path)
+        features = list(data_df.columns)[:-1]
+        target = list(data_df.columns)[-1]
+        X, y = get_split_data(data_df, features, target)
+        for train, test in cross_vall.split(data_df):
+            X_train, X_test = data_df.loc[train, features],\
+                                data_df.loc[test, features]
+            y_train, y_test = data_df.loc[train, target].values.ravel(),\
+                                data_df.loc[test, target].values.ravel()                        
+            model.fit(X_train, y_train)
+            pred = model.predict(X_test)
+            acc_scores = np.append(acc_scores, accuracy_score(y_test, pred))
+            f1_scores = np.append(f1_scores, f1_score(y_test, pred, average='weighted'))
+            roc_auc_scores = np.append(roc_auc_scores, roc_auc_score(y_test, model.predict_proba(X_test), multi_class='ovo'))
+        accuracy = np.mean(acc_scores)
+        f1 = np.mean(f1_scores)
+        roc_auc = np.mean(roc_auc_scores)
+        estimator = model.fit(X, y)
         mlflow.log_param('n_estimators', n_estimators)
         mlflow.log_param('max_depth', max_depth)
         mlflow.log_param('min_samples_split', min_samples_split)
