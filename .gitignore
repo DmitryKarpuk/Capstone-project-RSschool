@@ -1,4 +1,5 @@
 data
 .mypy_cache
 src/forest_ml/__pycache__
+tests/__pycache__
 mlruns
