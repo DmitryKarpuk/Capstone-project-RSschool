@@ -11,9 +11,12 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
 
+from . import __version__
+
 mlflow.set_tracking_uri('http://localhost:5000')
 
 @click.command()
+@click.version_option(version=__version__)
 @click.option(
     "-d",
     "--dataset-path",
