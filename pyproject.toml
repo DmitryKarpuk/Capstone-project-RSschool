@@ -9,6 +9,7 @@ line-length = 80
 
 [tool.poetry.scripts]
 train = "forest_ml.train:train"
+predict = "forest_ml.predict:predict"
 
 [tool.poetry.dependencies]
 python = "^3.9"

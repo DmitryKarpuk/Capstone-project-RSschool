@@ -24,7 +24,7 @@ mlflow.set_tracking_uri('http://localhost:5000')
     "-d",
     "--dataset-path",
     default="data/train.csv",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    type=click.Path(exists=True, dir_okay=False, path_type=Path)
 )
 @click.option(
     "-s",
@@ -66,7 +66,7 @@ def train(
         acc_scores = np.array([])
         f1_scores = np.array([])
         roc_auc_scores = np.array([])
-        data_df = get_data(dataset_path)
+        data_df = get_data(dataset_path).drop(columns='Id')
         features = list(data_df.columns)[:-1]
         target = list(data_df.columns)[-1]
         X, y = get_split_data(data_df, features, target)

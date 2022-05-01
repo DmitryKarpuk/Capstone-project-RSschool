@@ -6,7 +6,6 @@ from typing import Tuple, List
 
 def get_data(csv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
-    df.drop(columns="Id", inplace=True)
     return df
 
 
