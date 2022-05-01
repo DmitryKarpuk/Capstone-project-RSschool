@@ -19,7 +19,11 @@ from . import __version__
 mlflow.set_tracking_uri("http://localhost:5000")
 
 
-@click.command()
+@click.command(
+    help="Trains an model on forest cover type dataset."
+    "The input is expected in csv format."
+    "The model and its metrics are logged with mlflow."
+)
 @click.version_option(version=__version__)
 @click.option(
     "-d",
