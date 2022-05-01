@@ -9,6 +9,7 @@ import numpy as np
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 from forest_ml.data import get_data, get_split_data
@@ -32,11 +33,32 @@ mlflow.set_tracking_uri("http://localhost:5000")
     default="data/model.joblib",
     type=click.Path(writable=True, dir_okay=False, path_type=Path),
 )
+@click.option(
+    "--model",
+    default="LogisticRegression",
+    type=click.Choice(["LogisticRegression", "RandomForestClassifier"]),
+    show_default=True,
+)
 @click.option("--random-state", default=42, type=int, show_default=True)
 @click.option("--n-estimators", default=100, type=int, show_default=True)
 @click.option("--max-depth", default=None, type=int, show_default=True)
 @click.option("--min-samples_split", default=2, type=int, show_default=True)
 @click.option("--min-samples-leaf", default=2, type=int, show_default=True)
+@click.option("--max-iter", default=1000, type=int, show_default=True)
+@click.option("--logreg-c", default=1.0, type=float, show_default=True)
+@click.option(
+    "--penalty",
+    default="l2",
+    type=click.Choice(["l1", "l2", "elasticnet", "none"]),
+    show_default=True,
+)
+@click.option(
+    "--l1-ratio",
+    default=None,
+    type=click.FloatRange(0, 1, min_open=True, max_open=True),
+    show_default=True,
+    help="The Elastic-Net mixing parameter",
+)
 @click.option(
     "--cv",
     default=5,
@@ -47,21 +69,36 @@ mlflow.set_tracking_uri("http://localhost:5000")
 def train(
     dataset_path: Path,
     save_model_path: Path,
+    model: str,
     random_state: int,
     n_estimators: int,
     max_depth: int,
     min_samples_split: int,
     min_samples_leaf: int,
+    max_iter: int,
+    logreg_c: float,
+    penalty: str,
+    l1_ratio: float,
     cv: int,
 ) -> None:
-    with mlflow.start_run():
-        model = RandomForestClassifier(
+    if model == "LogisticRegression":
+        clf = LogisticRegression(
+            penalty=penalty,
+            max_iter=max_iter,
+            C=logreg_c,
+            random_state=random_state,
+            solver="saga",
+            l1_ratio=l1_ratio,
+        )
+    else:
+        clf = RandomForestClassifier(
             n_estimators=n_estimators,
             random_state=random_state,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
         )
+    with mlflow.start_run():
         cross_vall = KFold(n_splits=cv, shuffle=True, random_state=random_state)
         acc_scores: np.ndarray = np.array([])
         f1_scores: np.ndarray = np.array([])
@@ -79,8 +116,8 @@ def train(
                 data_df.loc[train, target].values.ravel(),
                 data_df.loc[test, target].values.ravel(),
             )
-            model.fit(X_train, y_train)
-            pred = model.predict(X_test)
+            clf.fit(X_train, y_train)
+            pred = clf.predict(X_test)
             acc_scores = np.append(acc_scores, accuracy_score(y_test, pred))
             f1_scores = np.append(
                 f1_scores, f1_score(y_test, pred, average="weighted")
@@ -88,17 +125,23 @@ def train(
             roc_auc_scores = np.append(
                 roc_auc_scores,
                 roc_auc_score(
-                    y_test, model.predict_proba(X_test), multi_class="ovo"
+                    y_test, clf.predict_proba(X_test), multi_class="ovo"
                 ),
             )
         accuracy = np.mean(acc_scores)
         f1 = np.mean(f1_scores)
         roc_auc = np.mean(roc_auc_scores)
-        estimator = model.fit(X, y)
-        mlflow.log_param("n_estimators", n_estimators)
-        mlflow.log_param("max_depth", max_depth)
-        mlflow.log_param("min_samples_split", min_samples_split)
-        mlflow.log_param("min_samples_leaf", min_samples_leaf)
+        estimator = clf.fit(X, y)
+        if model == "LogisticRegression":
+            mlflow.log_param("max_iter", max_iter)
+            mlflow.log_param("penalty", penalty)
+            mlflow.log_param("logreg_c", logreg_c)
+            mlflow.log_param("l1_ratio", l1_ratio)
+        else:
+            mlflow.log_param("n_estimators", n_estimators)
+            mlflow.log_param("max_depth", max_depth)
+            mlflow.log_param("min_samples_split", min_samples_split)
+            mlflow.log_param("min_samples_leaf", min_samples_leaf)
         mlflow.log_metric("accuracy", accuracy)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("roc_auc", roc_auc)
