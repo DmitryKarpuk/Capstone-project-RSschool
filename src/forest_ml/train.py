@@ -80,7 +80,7 @@ mlflow.set_tracking_uri("http://localhost:5000")
 @click.option(
     "--preprocessor",
     default="none",
-    type=click.Choice(["none", "PCA"]),
+    type=click.Choice(["none", "PCA", "SelectFromModel"]),
     show_default=True,
     help="Feature engineering methods",
 )
@@ -182,6 +182,8 @@ def train(
             mlflow.log_param("preprocessor", preprocessor)
             if preprocessor == "PCA":
                 mlflow.log_param("components", components)
+        if use_scaler:
+            mlflow.log_param("use_scaler", "StandardScaler")
         mlflow.log_metric("accuracy", accuracy)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("roc_auc", roc_auc)
