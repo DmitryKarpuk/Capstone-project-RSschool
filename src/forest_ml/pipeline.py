@@ -9,20 +9,22 @@ from typing import Dict
 from sklearn.preprocessing import StandardScaler
 
 
-def create_pipeline(method: str, params: Dict, model: str, n_components: int) -> Pipeline:
-    num_features = list(range(11))  # indexes of numeric features
+def create_pipeline(
+    method: str, params: Dict, model: str, n_components: int, use_scaler: bool
+) -> Pipeline:
+    num_features = list(range(10))  # indexes of numeric features
     steps = []
-    if method != 'none':
-        if method == "StandardScaler":
-            steps.append(
-                (
-                    "scaler",
-                    make_column_transformer(
-                        (StandardScaler(), num_features),
-                        remainder="passthrough",
-                    ),
-                )
+    if use_scaler:
+        steps.append(
+            (
+                "scaler",
+                make_column_transformer(
+                    (StandardScaler(), num_features),
+                    remainder="passthrough",
+                ),
             )
+        )
+    if method != "none":
         if method == "PCA":
             steps.append(
                 (
