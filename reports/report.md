@@ -10,7 +10,8 @@
 ![plot](./images/LG%20with%20PCA.png)
 5. Results of using RandomForestClassifier with PCA.<br>
 ![plot](./images/RF%20with%20PCA.png)
-
+6. REsult of using RandomForestClassifier with SelectFromModel<br>
+![plot](./images/RF%20with%20SelectFromModel.png)
 
 
 
