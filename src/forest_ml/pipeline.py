@@ -4,14 +4,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.compose import make_column_transformer
 from sklearn.feature_selection import SelectFromModel
 from sklearn.decomposition import PCA
-
-from typing import Dict
-
 from sklearn.preprocessing import StandardScaler
 
 
 def create_pipeline(
-    method: str, params: Dict, model: str, n_components: int, use_scaler: bool
+    method: str, model: str, n_components: int, use_scaler: bool, seed: int
 ) -> Pipeline:
     num_features = list(range(10))  # indexes of numeric features
     steps = []
@@ -20,8 +17,7 @@ def create_pipeline(
             (
                 "scaler",
                 make_column_transformer(
-                    (StandardScaler(), num_features),
-                    remainder="passthrough",
+                    (StandardScaler(), num_features), remainder="passthrough",
                 ),
             )
         )
@@ -42,17 +38,13 @@ def create_pipeline(
                     "selector",
                     SelectFromModel(
                         LogisticRegression(
-                            penalty="l1", solver="saga", max_iter=2000
+                            penalty="l1", solver="saga", max_iter=2000, random_state=seed
                         )
                     ),
                 ),
             )
     if model == "LogisticRegression":
-        steps.append(
-            ("logisticregression", LogisticRegression().set_params(**params))
-        )
+        steps.append(("logisticregression", LogisticRegression(random_state=seed)))
     if model == "RandomForestClassifier":
-        steps.append(
-            ("randomforest", RandomForestClassifier().set_params(**params))
-        )
+        steps.append(("randomforest", RandomForestClassifier(random_state=seed)))
     return Pipeline(steps=steps)
