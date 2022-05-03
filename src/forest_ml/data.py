@@ -15,3 +15,10 @@ def get_split_data(
     X = df.loc[:, features]
     y = df.loc[:, target].values.ravel()
     return X, y
+
+
+def get_partial_data(df: pd.DataFrame, ratio: float) -> pd.DataFrame:
+  rng = np.random.default_rng()
+  new_len = int(len(df) * ratio)
+  rows = rng.choice(len(df), new_len, replace=False)
+  return df.iloc[rows, :]
