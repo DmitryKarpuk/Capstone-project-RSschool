@@ -9,10 +9,10 @@ import mlflow.sklearn
 import numpy as np
 
 
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
-from .data import get_data, get_split_data
+from .data import *
 from .pipeline import create_pipeline
 
 from . import __version__
@@ -44,31 +44,23 @@ mlflow.set_tracking_uri("http://localhost:5000")
     type=click.Choice(["LogisticRegression", "RandomForestClassifier"]),
     show_default=True,
 )
-@click.option("--random-state", default=42, type=int, show_default=True)
-@click.option("--n-estimators", default=100, type=int, show_default=True)
-@click.option("--max-depth", default=None, type=int, show_default=True)
-@click.option("--min-samples-split", default=2, type=int, show_default=True)
-@click.option("--min-samples-leaf", default=2, type=int, show_default=True)
-@click.option("--max-iter", default=1000, type=int, show_default=True)
-@click.option("--logreg-c", default=1.0, type=float, show_default=True)
+@click.option(
+    "--metric",
+    default="accuracy",
+    type=click.Choice(["accuracy", "f1_weighted", "roc_auc_ovo"]),
+    show_default=True,
+)
+@click.option(
+    "--seed",
+    default=42,
+    type=int,
+    show_default=True
+)
 @click.option(
     "--use-scaler",
     default=True,
     type=bool,
     show_default=True,
-)
-@click.option(
-    "--penalty",
-    default="l2",
-    type=click.Choice(["l1", "l2", "elasticnet", "none"]),
-    show_default=True,
-)
-@click.option(
-    "--l1-ratio",
-    default=None,
-    type=click.FloatRange(0, 1, min_open=True, max_open=True),
-    show_default=True,
-    help="The Elastic-Net mixing parameter",
 )
 @click.option(
     "--cv",
@@ -95,15 +87,8 @@ def train(
     dataset_path: Path,
     save_model_path: Path,
     model: str,
-    random_state: int,
-    n_estimators: int,
-    max_depth: int,
-    min_samples_split: int,
-    min_samples_leaf: int,
-    max_iter: int,
-    logreg_c: float,
-    penalty: str,
-    l1_ratio: float,
+    metric: str,
+    seed: int,
     cv: int,
     preprocessor: str,
     components: int,
@@ -111,49 +96,62 @@ def train(
 ) -> None:
     if model == "LogisticRegression":
         params = {
-            "penalty": penalty,
-            "max_iter": max_iter,
-            "C": logreg_c,
-            "random_state": random_state,
-            "solver": "saga",
-            "l1_ratio": l1_ratio,
+            "logisticregression__penalty": ["l1", "l2"],
+            "logisticregression__max_iter": [1000, 2000, 3000],
+            "logisticregression__C": [0.1, 0.5, 1, 1.5, 2],
+            "logisticregression__random_state": [seed],
+            "logisticregression__solver": ["saga"],
         }
     else:
         params = {
-            "n_estimators": n_estimators,
-            "random_state": random_state,
-            "max_depth": max_depth,
-            "min_samples_split": min_samples_split,
-            "min_samples_leaf": min_samples_leaf,
-            "random_state": random_state,
+            "randomforest__n_estimators": [50, 70, 100, 120],
+            "randomforest__max_depth": [None, 10, 20, 30],
+            "randomforest__min_samples_split": [2, 5, 10],
+            "randomforest__min_samples_leaf": [2, 5, 10],
+            "randomforest__random_state": [seed],
         }
-    pipeline = create_pipeline(
-        method=preprocessor,
-        params=params,
-        model=model,
-        n_components=components,
-        use_scaler=use_scaler,
-    )
+
     with mlflow.start_run():
-        cross_vall = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+        cross_vall_outer = KFold(
+            n_splits=cv, shuffle=True, random_state=seed
+        )
         acc_scores: np.ndarray = np.array([])
         f1_scores: np.ndarray = np.array([])
         roc_auc_scores: np.ndarray = np.array([])
-        data_df = get_data(dataset_path).drop(columns="Id")
+        data_df = get_partial_data(get_data(dataset_path).drop(columns="Id"), ratio=0.1, seed=seed)
         features = list(data_df.columns)[:-1]
         target = list(data_df.columns)[-1]
         X, y = get_split_data(data_df, features, target)
-        for train, test in cross_vall.split(data_df):
+        for train, test in cross_vall_outer.split(data_df):
             X_train, X_test = (
-                data_df.loc[train, features],
-                data_df.loc[test, features],
+                X.iloc[train, :],
+                X.iloc[test, :]
             )
             y_train, y_test = (
-                data_df.loc[train, target].values.ravel(),
-                data_df.loc[test, target].values.ravel(),
+                y[train],
+                y[test]
             )
-            pipeline.fit(X_train, y_train)
-            pred = pipeline.predict(X_test)
+            cross_vall_inner = KFold(
+                n_splits=cv, shuffle=True, random_state=seed
+            )
+            pipeline = create_pipeline(
+                method=preprocessor,
+                model=model,
+                n_components=components,
+                use_scaler=use_scaler,
+                sedd=seed
+            )
+            gscv = GridSearchCV(
+                pipeline,
+                params,
+                scoring=metric,
+                cv=cross_vall_inner,
+                refit=True
+            )
+            result = gscv.fit(X_train, y_train)
+            best_pipeline = result.best_estimator_
+            best_params = result.best_params_
+            pred = best_pipeline.predict(X_test)
             acc_scores = np.append(acc_scores, accuracy_score(y_test, pred))
             f1_scores = np.append(
                 f1_scores, f1_score(y_test, pred, average="weighted")
@@ -161,23 +159,28 @@ def train(
             roc_auc_scores = np.append(
                 roc_auc_scores,
                 roc_auc_score(
-                    y_test, pipeline.predict_proba(X_test), multi_class="ovo"
+                    y_test, best_pipeline.predict_proba(X_test), multi_class="ovo"
                 ),
             )
         accuracy = np.mean(acc_scores)
         f1 = np.mean(f1_scores)
         roc_auc = np.mean(roc_auc_scores)
-        estimator = pipeline.fit(X, y)
+        estimator = best_pipeline.fit(X, y)
+
         if model == "LogisticRegression":
-            mlflow.log_param("max_iter", max_iter)
-            mlflow.log_param("penalty", penalty)
-            mlflow.log_param("logreg_c", logreg_c)
-            mlflow.log_param("l1_ratio", l1_ratio)
+            mlflow.log_param("max_iter", best_params["max_iter"])
+            mlflow.log_param("penalty", best_params["penalty"])
+            mlflow.log_param("logreg_c", best_params["C"])
         else:
-            mlflow.log_param("n_estimators", n_estimators)
-            mlflow.log_param("max_depth", max_depth)
-            mlflow.log_param("min_samples_split", min_samples_split)
-            mlflow.log_param("min_samples_leaf", min_samples_leaf)
+            mlflow.log_param("n_estimators", best_params["n_estimators"])
+            mlflow.log_param("max_depth", best_params["max_depth"])
+            mlflow.log_param(
+                "min_samples_split", best_params["min_samples_split"]
+            )
+            mlflow.log_param(
+                "min_samples_leaf", best_params["min_samples_leaf"]
+            )
+        mlflow.log_param("random_state", seed)
         if preprocessor != "none":
             mlflow.log_param("preprocessor", preprocessor)
             if preprocessor == "PCA":
