@@ -42,5 +42,7 @@ def predict(dataset_path: Path, submission_path: Path, model: str) -> None:
     pred = loaded_model.predict(pd.DataFrame(data_df.drop(columns="Id")))
     submission = pd.DataFrame(data={"Id": data_df["Id"], "Cover_Type": pred})
     submission.to_csv(submission_path, index=False)
+    click.echo(click.style("<<Model>>", fg="green"))
+    click.echo(f"Used model {loaded_model}")
     click.echo(click.style("<<Prediction>>", fg="green"))
     click.echo(f"Submission is saved to {submission_path}")

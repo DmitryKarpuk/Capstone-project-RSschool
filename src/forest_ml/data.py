@@ -18,7 +18,7 @@ def get_split_data(
 
 
 def get_partial_data(df: pd.DataFrame, ratio: float, seed: int) -> pd.DataFrame:
-  rng = np.random.default_rng(seed=seed)
-  new_len = int(len(df) * ratio)
-  rows = rng.choice(len(df), new_len, replace=False)
-  return df.iloc[rows, :]
+    rng = np.random.default_rng(seed=seed)
+    new_len = int(len(df) * ratio)
+    rows = rng.choice(len(df), new_len, replace=False)
+    return df.iloc[rows, :]

@@ -38,13 +38,20 @@ def create_pipeline(
                     "selector",
                     SelectFromModel(
                         LogisticRegression(
-                            penalty="l1", solver="saga", max_iter=2000, random_state=seed
+                            penalty="l1",
+                            solver="saga",
+                            max_iter=2000,
+                            random_state=seed,
                         )
                     ),
                 ),
             )
     if model == "LogisticRegression":
-        steps.append(("logisticregression", LogisticRegression(random_state=seed)))
+        steps.append(
+            ("logisticregression", LogisticRegression(random_state=seed))
+        )
     if model == "RandomForestClassifier":
-        steps.append(("randomforest", RandomForestClassifier(random_state=seed)))
+        steps.append(
+            ("randomforest", RandomForestClassifier(random_state=seed))
+        )
     return Pipeline(steps=steps)
