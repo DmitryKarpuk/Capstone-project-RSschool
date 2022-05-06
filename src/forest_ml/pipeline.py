@@ -17,7 +17,8 @@ def create_pipeline(
             (
                 "scaler",
                 make_column_transformer(
-                    (StandardScaler(), num_features), remainder="passthrough",
+                    (StandardScaler(), num_features),
+                    remainder="passthrough",
                 ),
             )
         )

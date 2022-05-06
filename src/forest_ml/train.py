@@ -113,9 +113,9 @@ def train(
 
     with mlflow.start_run():
         cross_vall_outer = KFold(n_splits=cv, shuffle=True, random_state=seed)
-        acc_scores: np.ndarray = np.array([])
-        f1_scores: np.ndarray = np.array([])
-        roc_auc_scores: np.ndarray = np.array([])
+        scores: dict = {'accuracy': np.array([]),
+                        'f1_weighted' : np.array([]),
+                        'roc_auc_ovo' : np.array([])}
         best_params: np.ndarray = np.array([])
         best_pipelines: list = []
         data_df = get_partial_data(
@@ -150,23 +150,16 @@ def train(
             best_pipelines.append(result.best_estimator_)
             best_params = np.append(best_params, result.best_params_)
             pred = result.best_estimator_.predict(X_test)
-            acc_scores = np.append(acc_scores, accuracy_score(y_test, pred))
-            f1_scores = np.append(
-                f1_scores, f1_score(y_test, pred, average="weighted")
-            )
-            roc_auc_scores = np.append(
-                roc_auc_scores,
-                roc_auc_score(
-                    y_test,
-                    result.best_estimator_.predict_proba(X_test),
-                    multi_class="ovo",
-                ),
-            )
-        accuracy = np.max(acc_scores)
-        f1 = f1_scores[np.argmax(acc_scores)]
-        roc_auc = roc_auc_scores[np.argmax(acc_scores)]
-        estimator = best_pipelines[np.argmax(acc_scores)].fit(X, y)
-        best_param = best_params[np.argmax(acc_scores)]
+            pre_prob = result.best_estimator_.predict_proba(X_test)
+            scores["accuracy"] = np.append(scores["accuracy"], accuracy_score(y_test, pred))
+            scores["f1_weighted"] = np.append(scores["f1_weighted"], f1_score(y_test, pred, average="weighted"))
+            scores["roc_auc_ovo"] = np.append(scores["roc_auc_ovo"],  roc_auc_score(y_test, pre_prob,  multi_class="ovo"))
+        best_index = np.argmax(scores[metric])
+        accuracy = scores["accuracy"][best_index]
+        f1 = scores["f1_weighted"][best_index]
+        roc_auc = scores["roc_auc_ovo"][best_index]
+        estimator = best_pipelines[best_index].fit(X, y)
+        best_param = best_params[best_index]
         click.echo(click.style(f"{best_param}", fg="green"))
         if model == "LogisticRegression":
             mlflow.log_param("max_iter", best_param["logisticregression__max_iter"])
