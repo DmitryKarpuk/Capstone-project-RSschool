@@ -9,11 +9,9 @@ import mlflow.sklearn
 import numpy as np
 import json
 
-from sklearn.model_selection import KFold, GridSearchCV
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
-
 from .data import get_partial_data, get_data, get_split_data
 from .pipeline import create_pipeline
+from .model_selection import kfold_cv, nested_cv, grid_search_cv
 
 from . import __version__
 
@@ -46,13 +44,22 @@ mlflow.set_tracking_uri("http://localhost:5000")
     help="Path to file with model parameters.",
 )
 @click.option(
+    "-m",
     "--model",
     default="logisticregression",
     type=click.Choice(["logisticregression", "randomforest"]),
     show_default=True,
 )
 @click.option(
-    "--metric",
+    "-st",
+    "--selection-type",
+    default="grid_search_cv",
+    type=click.Choice(["nested_cv", "grid_search_cv", "kfold_cv"]),
+    show_default=True,
+    help="Method of estimating model",
+)
+@click.option(
+    "--refit",
     default="accuracy",
     type=click.Choice(["accuracy", "f1_weighted", "roc_auc_ovo"]),
     show_default=True,
@@ -88,7 +95,7 @@ mlflow.set_tracking_uri("http://localhost:5000")
 @click.option(
     "--data-ratio",
     default=1,
-    type=click.FloatRange(0, 1, max_open=True),
+    type=click.FloatRange(0, 1, min_open=True),
     show_default=True,
     help="Ratio of data for train",
 )
@@ -97,7 +104,8 @@ def train(
     save_model_path: Path,
     param_path: Path,
     model: str,
-    metric: str,
+    selection_type: str,
+    refit: str,
     seed: int,
     cv: int,
     preprocessor: str,
@@ -109,14 +117,11 @@ def train(
         params = json.load(json_file)[model]
 
     with mlflow.start_run():
-        cross_vall_outer = KFold(n_splits=cv, shuffle=True, random_state=seed)
         scores: dict = {
             "accuracy": np.array([]),
             "f1_weighted": np.array([]),
             "roc_auc_ovo": np.array([]),
         }
-        best_params: np.ndarray = np.array([])
-        best_pipelines: list = []
         data_df = get_partial_data(
             get_data(dataset_path).drop(columns="Id"),
             ratio=data_ratio,
@@ -125,48 +130,24 @@ def train(
         features = list(data_df.columns)[:-1]
         target = list(data_df.columns)[-1]
         X, y = get_split_data(data_df, features, target)
-        for train, test in cross_vall_outer.split(data_df):
-            X_train, X_test = (X.iloc[train, :], X.iloc[test, :])
-            y_train, y_test = (y[train], y[test])
-            cross_vall_inner = KFold(
-                n_splits=cv, shuffle=True, random_state=seed
-            )
-            pipeline = create_pipeline(
-                method=preprocessor,
-                model=model,
-                n_components=components,
-                use_scaler=use_scaler,
-                seed=seed,
-            )
-            gscv = GridSearchCV(
-                pipeline,
-                params,
-                scoring=metric,
-                cv=cross_vall_inner,
-                refit=True,
-            )
-            result = gscv.fit(X_train, y_train)
-            best_pipelines.append(result.best_estimator_)
-            best_params = np.append(best_params, result.best_params_)
-            pred = result.best_estimator_.predict(X_test)
-            pre_prob = result.best_estimator_.predict_proba(X_test)
-            scores["accuracy"] = np.append(
-                scores["accuracy"], accuracy_score(y_test, pred)
-            )
-            scores["f1_weighted"] = np.append(
-                scores["f1_weighted"],
-                f1_score(y_test, pred, average="weighted"),
-            )
-            scores["roc_auc_ovo"] = np.append(
-                scores["roc_auc_ovo"],
-                roc_auc_score(y_test, pre_prob, multi_class="ovo"),
-            )
-        best_index = np.argmax(scores[metric])
-        accuracy = scores["accuracy"][best_index]
-        f1 = scores["f1_weighted"][best_index]
-        roc_auc = scores["roc_auc_ovo"][best_index]
-        estimator = best_pipelines[best_index].fit(X, y)
-        best_param = best_params[best_index]
+        pipeline = create_pipeline(
+            method=preprocessor,
+            model=model,
+            n_components=components,
+            use_scaler=use_scaler,
+            seed=seed,
+        )
+        if selection_type == "nested_cv":
+            cv_result = nested_cv(X, y, cv, refit, pipeline, seed, params, scores)
+        elif selection_type == "grid_search_cv":
+            cv_result = grid_search_cv(X, y, cv, refit, pipeline, seed, params, list(scores.keys()))
+        else:
+            cv_result = kfold_cv(X, y, cv, pipeline, seed, params, scores)
+        accuracy = cv_result["accuracy"]
+        f1 = cv_result["f1"]
+        roc_auc = cv_result["roc_auc"]
+        estimator = cv_result["estimator"]
+        best_param = cv_result["best_param"]
         click.echo(click.style(f"{best_param}", fg="green"))
         if model == "logisticregression":
             mlflow.log_param(
