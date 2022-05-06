@@ -12,6 +12,16 @@ def create_pipeline(
 ) -> Pipeline:
     num_features = list(range(10))  # indexes of numeric features
     steps = []
+    model_dict = {
+        "logisticregression": (
+            "logisticregression",
+            LogisticRegression(random_state=seed),
+        ),
+        "randomforest": (
+            "randomforest",
+            RandomForestClassifier(random_state=seed),
+        ),
+    }
     if use_scaler:
         steps.append(
             (
@@ -47,12 +57,5 @@ def create_pipeline(
                     ),
                 ),
             )
-    if model == "LogisticRegression":
-        steps.append(
-            ("logisticregression", LogisticRegression(random_state=seed))
-        )
-    if model == "RandomForestClassifier":
-        steps.append(
-            ("randomforest", RandomForestClassifier(random_state=seed))
-        )
+    steps.append(model_dict[model])
     return Pipeline(steps=steps)

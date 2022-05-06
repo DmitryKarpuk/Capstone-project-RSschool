@@ -1,0 +1,18 @@
+{   
+    "logisticregression" : 
+    {
+    "logisticregression__penalty": ["l1", "l2"],
+    "logisticregression__max_iter": [1000, 2000],
+    "logisticregression__C": [1.5, 2],
+    "logisticregression__random_state": [42],
+    "logisticregression__solver": ["saga"]
+    }
+    ,
+    "randomforest" : {
+        "randomforest__n_estimators": [50, 70, 100, 120],
+        "randomforest__max_depth": [10, 20, 30],
+        "randomforest__min_samples_split": [2, 5, 10],
+        "randomforest__min_samples_leaf": [2, 5, 10],
+        "randomforest__random_state": [42]
+    }
+}

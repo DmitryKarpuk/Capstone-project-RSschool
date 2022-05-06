@@ -7,7 +7,7 @@ import mlflow
 import mlflow.sklearn
 
 import numpy as np
-
+import json
 
 from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
@@ -39,9 +39,16 @@ mlflow.set_tracking_uri("http://localhost:5000")
     type=click.Path(writable=True, dir_okay=False, path_type=Path),
 )
 @click.option(
+    "-p",
+    "--param-path",
+    default="config/tuning_params.json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to file with model parameters.",
+)
+@click.option(
     "--model",
-    default="LogisticRegression",
-    type=click.Choice(["LogisticRegression", "RandomForestClassifier"]),
+    default="logisticregression",
+    type=click.Choice(["logisticregression", "randomforest"]),
     show_default=True,
 )
 @click.option(
@@ -52,7 +59,10 @@ mlflow.set_tracking_uri("http://localhost:5000")
 )
 @click.option("--seed", default=42, type=int, show_default=True)
 @click.option(
-    "--use-scaler", default=True, type=bool, show_default=True,
+    "--use-scaler",
+    default=True,
+    type=bool,
+    show_default=True,
 )
 @click.option(
     "--cv",
@@ -85,6 +95,7 @@ mlflow.set_tracking_uri("http://localhost:5000")
 def train(
     dataset_path: Path,
     save_model_path: Path,
+    param_path: Path,
     model: str,
     metric: str,
     seed: int,
@@ -94,28 +105,16 @@ def train(
     use_scaler: bool,
     data_ratio: float,
 ) -> None:
-    if model == "LogisticRegression":
-        params = {
-            "logisticregression__penalty": ["l1", "l2"],
-            "logisticregression__max_iter": [1000, 2000],
-            "logisticregression__C": [1, 1.5, 2],
-            "logisticregression__random_state": [seed],
-            "logisticregression__solver": ["saga"],
-        }
-    else:
-        params = {
-            "randomforest__n_estimators": [50, 70, 100, 120],
-            "randomforest__max_depth": [None, 10, 20, 30],
-            "randomforest__min_samples_split": [2, 5, 10],
-            "randomforest__min_samples_leaf": [2, 5, 10],
-            "randomforest__random_state": [seed],
-        }
+    with open(param_path) as json_file:
+        params = json.load(json_file)[model]
 
     with mlflow.start_run():
         cross_vall_outer = KFold(n_splits=cv, shuffle=True, random_state=seed)
-        scores: dict = {'accuracy': np.array([]),
-                        'f1_weighted' : np.array([]),
-                        'roc_auc_ovo' : np.array([])}
+        scores: dict = {
+            "accuracy": np.array([]),
+            "f1_weighted": np.array([]),
+            "roc_auc_ovo": np.array([]),
+        }
         best_params: np.ndarray = np.array([])
         best_pipelines: list = []
         data_df = get_partial_data(
@@ -151,9 +150,17 @@ def train(
             best_params = np.append(best_params, result.best_params_)
             pred = result.best_estimator_.predict(X_test)
             pre_prob = result.best_estimator_.predict_proba(X_test)
-            scores["accuracy"] = np.append(scores["accuracy"], accuracy_score(y_test, pred))
-            scores["f1_weighted"] = np.append(scores["f1_weighted"], f1_score(y_test, pred, average="weighted"))
-            scores["roc_auc_ovo"] = np.append(scores["roc_auc_ovo"],  roc_auc_score(y_test, pre_prob,  multi_class="ovo"))
+            scores["accuracy"] = np.append(
+                scores["accuracy"], accuracy_score(y_test, pred)
+            )
+            scores["f1_weighted"] = np.append(
+                scores["f1_weighted"],
+                f1_score(y_test, pred, average="weighted"),
+            )
+            scores["roc_auc_ovo"] = np.append(
+                scores["roc_auc_ovo"],
+                roc_auc_score(y_test, pre_prob, multi_class="ovo"),
+            )
         best_index = np.argmax(scores[metric])
         accuracy = scores["accuracy"][best_index]
         f1 = scores["f1_weighted"][best_index]
@@ -161,15 +168,22 @@ def train(
         estimator = best_pipelines[best_index].fit(X, y)
         best_param = best_params[best_index]
         click.echo(click.style(f"{best_param}", fg="green"))
-        if model == "LogisticRegression":
-            mlflow.log_param("max_iter", best_param["logisticregression__max_iter"])
-            mlflow.log_param("penalty", best_param["logisticregression__penalty"])
+        if model == "logisticregression":
+            mlflow.log_param(
+                "max_iter", best_param["logisticregression__max_iter"]
+            )
+            mlflow.log_param(
+                "penalty", best_param["logisticregression__penalty"]
+            )
             mlflow.log_param("logreg_c", best_param["logisticregression__C"])
         else:
-            mlflow.log_param("n_estimators", best_param["randomforest__n_estimators"])
+            mlflow.log_param(
+                "n_estimators", best_param["randomforest__n_estimators"]
+            )
             mlflow.log_param("max_depth", best_param["randomforest__max_depth"])
             mlflow.log_param(
-                "min_samples_split", best_param["randomforest__min_samples_split"]
+                "min_samples_split",
+                best_param["randomforest__min_samples_split"],
             )
             mlflow.log_param(
                 "min_samples_leaf", best_param["randomforest__min_samples_leaf"]
@@ -181,7 +195,7 @@ def train(
                 mlflow.log_param("components", components)
         if use_scaler:
             mlflow.log_param("use_scaler", "StandardScaler")
-        mlflow.log_param("data ratio", data_ratio)    
+        mlflow.log_param("data ratio", data_ratio)
         mlflow.log_metric("accuracy", accuracy)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("roc_auc", roc_auc)
