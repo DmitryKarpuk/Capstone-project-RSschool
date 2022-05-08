@@ -1,5 +1,5 @@
-data
+data/
 .mypy_cache
-src/forest_ml/__pycache__
-tests/__pycache__
+**/__pycache__
 mlruns
+.coverage
