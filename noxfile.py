@@ -1,71 +1,148 @@
-"""Nox sessions."""
+import logging
+import os
 import tempfile
-from typing import Any
+from contextlib import contextmanager
+from functools import reduce
+from pathlib import Path
+from typing import Any, Generator, List
 
 import nox
 from nox.sessions import Session
+from setuptools import find_namespace_packages, find_packages
+
+nox.options.sessions = "black", "lint", "mypy", "tests"
+
+SOURCE_LOCATIONS = ["src", "tests", "noxfile.py"]
+logger = logging.getLogger(__name__)
 
 
-package = "forest_ml"
-nox.options.sessions = "black", "flake8", "mypy"
-locations = "src", "noxfile.py"
+@contextmanager
+def temporary_file() -> Generator[str, None, None]:
+    # On windows we cannot use tempfile.NamedTemporaryFile() directly because
+    # the file cannot be written while still open
+    tmpf = tempfile.NamedTemporaryFile(delete=False)
+    tmpf.close()
+    try:
+        yield tmpf.name
+    finally:
+        os.unlink(tmpf.name)
+
+
+def export_poetry_requirements(session: Session, file_name: str) -> None:
+    session.run(
+        "poetry",
+        "export",
+        "--dev",
+        "--format=requirements.txt",
+        "--without-hashes",
+        f"--output={file_name}",
+        external=True,
+    )
 
 
 def install_with_constraints(
     session: Session, *args: str, **kwargs: Any
 ) -> None:
-    """Install packages constrained by Poetry's lock file.
-    This function is a wrapper for nox.sessions.Session.install. It
-    invokes pip to install packages inside of the session's virtualenv.
-    Additionally, pip is passed a constraints file generated from
-    Poetry's lock file, to ensure that the packages are pinned to the
-    versions specified in poetry.lock. This allows you to manage the
-    packages as Poetry development dependencies.
-    Arguments:
-        session: The Session object.
-        args: Command-line arguments for pip.
-        kwargs: Additional keyword arguments for Session.install.
-    """
-    with tempfile.NamedTemporaryFile() as requirements:
-        session.run(
-            "poetry",
-            "export",
-            "--dev",
-            "--format=requirements.txt",
-            f"--output={requirements.name}",
-            external=True,
-        )
-        session.install(f"--constraint={requirements.name}", *args, **kwargs)
+    with temporary_file() as requirements:
+        export_poetry_requirements(session, requirements)
+        session.install(f"--constraint={requirements}", *args, **kwargs)
 
 
-@nox.session(python="3.9")
-def black(session: Session) -> None:
-    """Run black code formatter."""
-    args = session.posargs or locations
-    install_with_constraints(session, "black")
-    session.run("black", *args)
-
-
-@nox.session(python="3.9")
-def flake8(session: Session) -> None:
-    """Run flake8 code linter."""
-    args = session.posargs or locations
-    install_with_constraints(session, "flake8")
-    session.run("black", *args)
-
-
-@nox.session(python="3.9")
-def mypy(session: Session) -> None:
-    """Type-check using mypy."""
-    args = session.posargs or locations
-    install_with_constraints(session, "mypy")
-    session.run("mypy", *args)
-
-
-@nox.session(python="3.9")
+@nox.session(python=["3.9"])
 def tests(session: Session) -> None:
-    """Run the test suite."""
     args = session.posargs
     session.run("poetry", "install", "--no-dev", external=True)
     install_with_constraints(session, "pytest")
     session.run("pytest", *args)
+
+
+@contextmanager
+def temporary_init_files_in_namespace_packages(
+    source_locations: List[str],
+) -> Generator[List[Path], None, None]:
+    """
+    Convert all namespace packages to packages in specified source locations.
+    Returns the list of __init__.py files created that way.
+    """
+    init_files = []
+    for source_location in source_locations:
+        if not Path(source_location).is_dir():
+            continue
+
+        root_dir = source_location
+        found_packages = find_packages(root_dir)
+        found_ns_packages = find_namespace_packages(root_dir)
+        for package in set(found_ns_packages) - set(found_packages):
+            subdir = reduce(
+                lambda parent_dir, subdir: parent_dir / subdir,
+                package.split("."),
+                Path(root_dir),
+            )
+            init_file = subdir / "__init__.py"
+            if not Path(init_file).exists():
+                init_files.append(init_file)
+
+    for init_file in init_files:
+        with open(init_file, "w") as init_file_io:
+            logger.info(f"Creating temporary empty init file {init_file}")
+            init_file_io.write("# empty init file for mypy\n")
+
+    # Count total number of python files so we can check if mypy process the same amount
+    logger.info(
+        f"Total number of python files: {_count_python_files(source_locations)}"
+    )
+
+    try:
+        yield init_files
+    finally:
+        for init_file in init_files:
+            logger.info(f"Removing temporary empty init file {init_file}")
+            init_file.unlink()
+
+
+def _count_python_files(
+    source_locations: List[str],
+) -> int:
+    python_file_count = 0
+    for source_location in source_locations:
+        path = Path(source_location)
+        if path.is_file() and path.suffix == ".py":
+            python_file_count += 1
+        elif path.is_dir():
+            for _root, _dirs, files in os.walk(source_location):
+                for f in files:
+                    if Path(f).suffix == ".py":
+                        python_file_count += 1
+    return python_file_count
+
+
+@nox.session
+def black(session: Session) -> None:
+    args = session.posargs or SOURCE_LOCATIONS
+    install_with_constraints(session, "black")
+    session.run("black", *args)
+
+
+@nox.session(python=["3.9"])
+def lint(session: Session) -> None:
+    args = session.posargs or SOURCE_LOCATIONS
+    install_with_constraints(
+        session,
+        "flake8",
+    )
+    session.run("flake8", *args)
+
+
+@nox.session(python=["3.9"])
+def mypy(session: Session) -> None:
+    args = session.posargs or SOURCE_LOCATIONS
+
+    # Install the whole project in virutal env for running mypy, to ensure we have
+    # library stubs of dependencies.
+    # It allows to limit the use of 'ignore_missing_imports' in mypy.ini
+    session.run("poetry", "install", external=True)
+
+    # Unfortunately, mypy may not work as expected with namespace packages
+    # We enforce the presence of __init__.py file in all subpackages to avoid any issue
+    with temporary_init_files_in_namespace_packages(args):
+        session.run("mypy", *args)
