@@ -1,3 +1,7 @@
+name: Tests
+on: push
+jobs:
+  tests:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
