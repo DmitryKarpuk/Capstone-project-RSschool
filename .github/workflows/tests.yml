@@ -11,7 +11,5 @@ jobs:
     - name: Install nox, poetry
       run: pip install nox==2022.1.7
            pip install poetry==1.1.13
-    - name: Run mlflow ui
-      run:  mlflow ui
     - name: Run nox
       run: nox -r
