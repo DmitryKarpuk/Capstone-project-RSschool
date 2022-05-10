@@ -17,7 +17,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-mlflow.set_tracking_uri("http://localhost:5000")
+# mlflow.set_tracking_uri("http://localhost:5000")
 
 
 @click.command(
@@ -183,7 +183,7 @@ def train(
         mlflow.log_metric("accuracy", accuracy)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("roc_auc", roc_auc)
-        # mlflow.sklearn.log_model(estimator, model)
+        mlflow.sklearn.log_model(estimator, model)
     click.echo(click.style("<<Metrics>>", fg="green"))
     click.echo(f"Accuracy: {accuracy}")
     click.echo(f"F1: {f1}")
