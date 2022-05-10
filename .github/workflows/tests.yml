@@ -1,11 +1,11 @@
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-python@v1
     - uses: actions/setup-python@v2
       with:
         python-version: 3.9
-    - run: pip install nox==2022.1.7
-    - run: pip install poetry==1.1.13
-    - run: poetry install
-    - run: nox -r
+    - name: Install nox, poetry
+      run: pip install nox==2022.1.7
+           pip install poetry==1.1.13
+    - name: Run nox
+      run: nox -r
