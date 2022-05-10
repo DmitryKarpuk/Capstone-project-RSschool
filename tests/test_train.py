@@ -47,7 +47,9 @@ def test_default_option(runner: CliRunner) -> None:
     """OK if train works without error on default option"""
     with runner.isolated_filesystem():
         path = os.getcwd()
-        data_df = pd.read_csv(parent_path+r"\tests\test_data\pytest_test.csv", index_col='Id')
+        data_df = pd.read_csv(
+            parent_path + r"\tests\test_data\pytest_test.csv", index_col="Id"
+        )
         X = data_df.drop(columns="Cover_Type")
         y = data_df.Cover_Type.values.ravel()
         arglist = default_arg + ["-s", path + "/model.joblib"]
@@ -55,4 +57,6 @@ def test_default_option(runner: CliRunner) -> None:
         loaded_model = load(path + "/model.joblib")
         pred = loaded_model.predict(X)
     assert result.exit_code == 0, "Train fuction is faild"
-    assert np.array_equal(np.unique(pred), np.unique(y)), "Wrong class predicted"
+    assert np.array_equal(
+        np.unique(pred), np.unique(y)
+    ), "Wrong class predicted"

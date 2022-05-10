@@ -1,17 +1,16 @@
 # Report
-## Estimating the preformance of a ML model using K-Fold validation.
-1. Resilts of using RandomForestClassifier without feature engineering.<br>
-![plot](./images/RF%20without%20preprocessing.png)
-2. Results of using LogisticRegression without feature engineering.<br>
-![plot](./images/LG%20without%20preprocessing.png)
-3. Results of using LogisticRegression after StandardScaler.<br>
-![plot](./images/LG%20with%20StandardScaler.png)
-4. Results of using LogisticRegression after PCA.<br>
-![plot](./images/LG%20with%20PCA.png)
-5. Results of using RandomForestClassifier with PCA.<br>
-![plot](./images/RF%20with%20PCA.png)
-6. REsult of using RandomForestClassifier with SelectFromModel<br>
-![plot](./images/RF%20with%20SelectFromModel.png)
-
-
-
+## Screenshots with description.
+1. Results of using LogisticRegression with different hyperparameters and feature enginireeng methods.<br>
+![plot](./images/LG.png)
+2. Results of using RandomForestClassifier with different hyperparameters and feature enginireeng methods.<br>
+![plot](./images/RF.png)
+3. Result of using Nested CV with LogisticRegression on 10% of data
+![plot](./images/Nested%20CV%20LG.png)
+4. Result of using Nested CV with LogisticRegression on 10% of data
+![plot](./images/NestedCV%20RF.png)
+5. Using nox to project.<br>
+![plot](./images/nox%20result.png)
+6. Result of tests, task 11.1.<br>
+![plot](./images/tests%20for%20task%2011_1.png)
+7. Result of tests, task 11.2.<br>
+![plot](./images/tests%20for%20task%2011_2.png)
