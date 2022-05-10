@@ -13,6 +13,8 @@ jobs:
       run: pip install poetry==1.1.13
     - name: Install deps 
       run: poetry install
+    - name: Run enviroment
+      run: poetry shell
     - name: Run black
       run: black .
     - name: Run flake8
