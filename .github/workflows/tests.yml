@@ -16,10 +16,10 @@ jobs:
     - name: Run enviroment
       run: poetry shell
     - name: Run black
-      run: black .
+      run: python -m black .
     - name: Run flake8
-      run: flake8 .
+      run: python -m flake8 .
     - name: Run mypy
-      run: mypy .
+      run: python -m mypy .
     - name: Run tests
       run: poetry run pytest
