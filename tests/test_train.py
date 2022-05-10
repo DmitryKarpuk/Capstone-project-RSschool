@@ -28,7 +28,7 @@ def test_error_for_invalid_cv(runner: CliRunner) -> None:
         path = os.getcwd()
         arglist = default_arg + ["-s", path + "/model.joblib", "--cv", "0"]
         result = runner.invoke(train, arglist)
-    assert result.exit_code == 0, "CV less then 2"
+    assert result.exit_code == 1, "CV should be more the 2"
 
 
 def test_cv(runner: CliRunner) -> None:

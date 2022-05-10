@@ -1,4 +1,3 @@
-from dis import show_code
 from pathlib import Path
 import click
 from joblib import dump
@@ -14,6 +13,9 @@ from .pipeline import create_pipeline
 from .model_selection import kfold_cv, nested_cv, grid_search_cv
 
 from . import __version__
+import warnings
+
+warnings.filterwarnings("ignore")
 
 mlflow.set_tracking_uri("http://localhost:5000")
 
@@ -116,39 +118,40 @@ def train(
     with open(param_path) as json_file:
         params = json.load(json_file)[model]
 
+    scores: dict = {
+        "accuracy": np.array([]),
+        "f1_weighted": np.array([]),
+        "roc_auc_ovo": np.array([]),
+    }
+    data_df = get_partial_data(
+        get_data(dataset_path).drop(columns="Id"),
+        ratio=data_ratio,
+        seed=seed,
+    )
+    features = list(data_df.columns)[:-1]
+    target = list(data_df.columns)[-1]
+    X, y = get_split_data(data_df, features, target)
+    pipeline = create_pipeline(
+        method=preprocessor,
+        model=model,
+        n_components=components,
+        use_scaler=use_scaler,
+        seed=seed,
+    )
+    if selection_type == "nested_cv":
+        cv_result = nested_cv(X, y, cv, refit, pipeline, seed, params, scores)
+    elif selection_type == "grid_search_cv":
+        cv_result = grid_search_cv(
+            X, y, cv, refit, pipeline, seed, params, list(scores.keys())
+        )
+    else:
+        cv_result = kfold_cv(X, y, cv, pipeline, seed, params, scores)
+    accuracy = cv_result["accuracy"]
+    f1 = cv_result["f1"]
+    roc_auc = cv_result["roc_auc"]
+    estimator = cv_result["estimator"]
+    best_param = cv_result["best_param"]
     with mlflow.start_run():
-        scores: dict = {
-            "accuracy": np.array([]),
-            "f1_weighted": np.array([]),
-            "roc_auc_ovo": np.array([]),
-        }
-        data_df = get_partial_data(
-            get_data(dataset_path).drop(columns="Id"),
-            ratio=data_ratio,
-            seed=seed,
-        )
-        features = list(data_df.columns)[:-1]
-        target = list(data_df.columns)[-1]
-        X, y = get_split_data(data_df, features, target)
-        pipeline = create_pipeline(
-            method=preprocessor,
-            model=model,
-            n_components=components,
-            use_scaler=use_scaler,
-            seed=seed,
-        )
-        if selection_type == "nested_cv":
-            cv_result = nested_cv(X, y, cv, refit, pipeline, seed, params, scores)
-        elif selection_type == "grid_search_cv":
-            cv_result = grid_search_cv(X, y, cv, refit, pipeline, seed, params, list(scores.keys()))
-        else:
-            cv_result = kfold_cv(X, y, cv, pipeline, seed, params, scores)
-        accuracy = cv_result["accuracy"]
-        f1 = cv_result["f1"]
-        roc_auc = cv_result["roc_auc"]
-        estimator = cv_result["estimator"]
-        best_param = cv_result["best_param"]
-        click.echo(click.style(f"{best_param}", fg="green"))
         if model == "logisticregression":
             mlflow.log_param(
                 "max_iter", best_param["logisticregression__max_iter"]
