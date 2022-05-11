@@ -31,7 +31,7 @@ def test_error_for_invalid_cv(runner: CliRunner) -> None:
         path = os.getcwd()
         arglist = default_arg + ["-s", path + "/model.joblib", "--cv", "0"]
         result = runner.invoke(train, arglist)
-    assert result.exit_code == 1, "CV should be more the 2"
+    assert result.exit_code == 1, "CV should be more then 2"
 
 
 def test_cv(runner: CliRunner) -> None:
@@ -41,6 +41,35 @@ def test_cv(runner: CliRunner) -> None:
         arglist = default_arg + ["-s", path + "/model.joblib", "--cv", "2"]
         result = runner.invoke(train, arglist)
     assert result.exit_code == 0, "Invalid cv parameter"
+
+
+def test_model(runner: CliRunner) -> None:
+    """OK when model option is relevant"""
+    with runner.isolated_filesystem():
+        path = os.getcwd()
+        arglist = default_arg + [
+            "-s",
+            path + "/model.joblib",
+            "-m",
+            "wrong_model_name",
+        ]
+        result = runner.invoke(train, arglist)
+    assert result.exit_code == 2, "Wrong model option"
+    assert "Usage: train [OPTIONS]" in result.output
+
+
+def test_params(runner: CliRunner) -> None:
+    """OK when config of parameters is json file"""
+    with runner.isolated_filesystem():
+        path = os.getcwd()
+        arglist = default_arg + [
+            "-s",
+            path + "/model.joblib",
+            "-p",
+            parent_path + r"\tests\test_data\pytest_train.csv",
+        ]
+        result = runner.invoke(train, arglist)
+    assert result.exit_code == 1, "Wrong config file format"
 
 
 def test_default_option(runner: CliRunner) -> None:
