@@ -1,5 +1,7 @@
 Homework 9 capstone project for RS School Machine Learning course.
 
+[![Badge Status](https://github.com/DmitryKarpuk/9_evaluation_selection/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/DmitryKarpuk/9_evaluation_selection/actions/workflows/tests.yml)
+
 This homework uses [Forest Covered Type Prediction](https://www.kaggle.com/competitions/forest-cover-type-prediction/data) dataset.
 
 ## Usage
