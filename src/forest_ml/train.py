@@ -1,6 +1,7 @@
 from pathlib import Path
 import click
 from joblib import dump
+from math import inf
 
 import mlflow
 import mlflow.sklearn
@@ -65,8 +66,11 @@ warnings.filterwarnings("ignore")
     default="accuracy",
     type=click.Choice(["accuracy", "f1_weighted", "roc_auc_ovo"]),
     show_default=True,
+    help="Refit parameter for model selecting",
 )
-@click.option("--seed", default=42, type=int, show_default=True)
+@click.option(
+    "--seed", default=42, type=click.IntRange(1, inf), show_default=True
+)
 @click.option(
     "--use-scaler",
     default=True,
@@ -92,7 +96,7 @@ warnings.filterwarnings("ignore")
     default=2,
     type=int,
     show_default=True,
-    help="Number of components to keep",
+    help="Number of components to keep for PCA",
 )
 @click.option(
     "--data-ratio",
@@ -115,9 +119,10 @@ def train(
     use_scaler: bool,
     data_ratio: float,
 ) -> None:
+    if param_path.suffix != ".json":
+        raise TypeError("Config file must be json format")
     with open(param_path) as json_file:
         params = json.load(json_file)[model]
-
     scores: dict = {
         "accuracy": np.array([]),
         "f1_weighted": np.array([]),
