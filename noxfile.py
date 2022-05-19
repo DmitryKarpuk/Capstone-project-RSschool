@@ -57,7 +57,7 @@ def mypy(session: Session) -> None:
 @nox.session
 def tests(session: Session) -> None:
     """Run the test suite."""
-    args = session.posargs
-    install_with_constraints(session, "pytest")
-    session.run("poetry", "install", external=True)
-    session.run("poetry", "run", "pytest", "--cov", *args)
+    args = session.posargs or ["--cov"]
+    session.run("poetry", "install", "--no-dev", external=True)
+    install_with_constraints(session, "coverage[toml]", "pytest", "pytest-cov")
+    session.run("pytest", *args)
