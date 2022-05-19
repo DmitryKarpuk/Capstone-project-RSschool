@@ -58,6 +58,6 @@ def mypy(session: Session) -> None:
 def tests(session: Session) -> None:
     """Run the test suite."""
     args = session.posargs
-    session.run("poetry", "install", "--no-dev", external=True)
     install_with_constraints(session, "pytest")
-    session.run("pytest", *args)
+    session.run("poetry", "install", external=True)
+    session.run("poetry", "run", "pytest", "--cov", *args)
