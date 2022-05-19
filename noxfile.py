@@ -1,32 +1,57 @@
+import os
+from typing import Any
 import nox
 from nox.sessions import Session
 
-nox.options.sessions = ["black", "lint", "mypy", "test"]
-location = ["src/", "tests/"]
+
+nox.options.sessions = "lint", "black", "mypy", "tests"
+LOCATIONS = "src", "tests", "noxfile.py"
+TEMP_FILE = "temp.txt"
+
+
+def install_with_constraints(
+    session: Session, *args: str, **kwargs: Any
+) -> None:
+    session.run(
+        "poetry",
+        "export",
+        "--dev",
+        "--format=requirements.txt",
+        "--without-hashes",
+        f"--output={TEMP_FILE}",
+        external=True,
+    )
+    session.install(f"--constraint={TEMP_FILE}", *args, **kwargs)
+    os.unlink(TEMP_FILE)
 
 
 @nox.session
-def lint(session):
-    session.install("flake8")
-    session.run("flake8", "src/")
+def lint(session: Session) -> None:
+    """Run flake8 code linter."""
+    args = session.posargs or LOCATIONS
+    install_with_constraints(session, "flake8")
+    session.run("flake8", *args)
 
 
 @nox.session
-def black(session):
-    session.install("black")
-    session.run("black", ".")
+def black(session: Session) -> None:
+    """Run black code formatter."""
+    args = session.posargs or LOCATIONS
+    install_with_constraints(session, "black")
+    session.run("black", *args)
 
 
 @nox.session
-def mypy(session):
-    session.install("mypy")
-    session.run("mypy", "src/")
+def mypy(session: Session) -> None:
+    """Type check using mypy."""
+    args = session.posargs or LOCATIONS
+    install_with_constraints(session, "mypy")
+    session.run("mypy", *args)
 
 
 @nox.session
-def test(session):
+def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install("poetry")
-    session.install("pytest")
-    session.run("poetry", "install", external=True)
-    session.run("poetry", "run", "pytest", external=True)
+    args = session.posargs
+    session.run("poetry", "install", "--no-dev", external=True)
+    session.run("poetry", "run", "pytest", *args, external=True)
