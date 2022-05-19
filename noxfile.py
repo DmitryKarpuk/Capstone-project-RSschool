@@ -52,6 +52,5 @@ def mypy(session: Session) -> None:
 @nox.session
 def tests(session: Session) -> None:
     """Run the test suite."""
-    args = session.posargs
     session.run("poetry", "install", "--no-dev", external=True)
-    session.run("poetry", "run", "pytest", *args, external=True)
+    session.run("poetry", "run", "pytest", external=True)
