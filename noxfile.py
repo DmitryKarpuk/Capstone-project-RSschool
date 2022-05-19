@@ -29,7 +29,12 @@ def install_with_constraints(
 def lint(session: Session) -> None:
     """Run flake8 code linter."""
     args = session.posargs or LOCATIONS
-    install_with_constraints(session, "flake8")
+    install_with_constraints(
+        session,
+        "flake8",
+        "flake8-black",
+        "flake8-annotations",
+    )
     session.run("flake8", *args)
 
 
