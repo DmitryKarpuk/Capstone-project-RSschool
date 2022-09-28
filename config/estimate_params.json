@@ -9,10 +9,10 @@
     }
     ,
     "randomforest" : {
-        "randomforest__n_estimators": 50,
-        "randomforest__max_depth": 30,
-        "randomforest__min_samples_split": 10,
-        "randomforest__min_samples_leaf": 5,
+        "randomforest__n_estimators": 150,
+        "randomforest__max_depth": 70,
+        "randomforest__min_samples_split": 5,
+        "randomforest__min_samples_leaf": 2,
         "randomforest__random_state": 42
     }
 }
