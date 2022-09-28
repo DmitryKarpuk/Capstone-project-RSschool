@@ -49,3 +49,4 @@ def predict(dataset_path: Path, submission_path: Path, model: str) -> None:
     click.echo(click.style("<<Model>>", fg="green"))
     click.echo(click.style("<<Prediction>>", fg="green"))
     click.echo(f"Submission is saved to {submission_path}")
+    click.echo(f"Submission is saved to {__name__}")
