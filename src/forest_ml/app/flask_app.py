@@ -1,23 +1,37 @@
-from crypt import methods
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
+import click
 from joblib import load
-from forest_ml.data import get_data
-from forest_ml.predict import _predict
-import numpy as np
 import pandas as pd
 
-model_path = 'data/model.joblib'
-model = load(model_path)
 
-app = Flask(__name__)
+FOREST_TYPES = [
+    "Spruce/Fir",
+    "Lodgepole Pine",
+    "Ponderosa Pine",
+    "Cottonwood/Willow",
+    "Aspen",
+    "Douglas-fir",
+    "Krummholz",
+]
+MODEL_PATH = "data/model.joblib"
+model = load(MODEL_PATH)
 
-@app.route('/predict', methods=['POST'])
-def predict():
+app = Flask('forest_type')
+
+
+@app.route("/predict", methods=["POST"])
+def predict() -> Response:
     forest = request.get_json()
-    if 'Id' in forest.keys():
-        X = pd.DataFrame(forest).drop('Id')   
-    else:   
+    assert forest is not None
+    if "Id" in forest.keys():
+        X = pd.DataFrame(forest).drop("Id")
+    else:
         X = pd.DataFrame(forest)
-    y_pred = _predict(X, model)
+    y_pred = FOREST_TYPES[model.predict(X)[0] - 1]
+    prob = model.predict_proba(X).max()
+    result = {"forest_type": str(y_pred), "probabilities": float(prob)}
+    return jsonify(result)
 
-    result = {'forest_type' : int(y_pred)}
+
+if __name__=='__main__':
+    app.run(debug=True, host="0.0.0.0", port=9696)

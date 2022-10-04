@@ -7,7 +7,8 @@ from joblib import load
 from . import __version__
 from forest_ml.data import get_data
 
-def _predict(X: pd.DataFrame, model: str) -> np.array:
+
+def _predict(X: pd.DataFrame, model: str) -> np.ndarray:
     if Path(model).suffix == ".joblib":
         # Load model from joblib file.
         loaded_model = load(model)
@@ -16,6 +17,7 @@ def _predict(X: pd.DataFrame, model: str) -> np.array:
         loaded_model = mlflow.pyfunc.load_model(model)
     pred = loaded_model.predict(X)
     return pred
+
 
 @click.command()
 @click.version_option(version=__version__)
@@ -49,4 +51,3 @@ def predict(dataset_path: Path, submission_path: Path, model: str) -> None:
     click.echo(click.style("<<Model>>", fg="green"))
     click.echo(click.style("<<Prediction>>", fg="green"))
     click.echo(f"Submission is saved to {submission_path}")
-    click.echo(f"Submission is saved to {__name__}")

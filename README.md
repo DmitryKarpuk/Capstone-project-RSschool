@@ -11,7 +11,7 @@ This package allows you to train model for predicting forest cover type, predict
 ### Preparation
 1. Clone this repository to your machine.
 2. Download [Forest Covered Type Prediction](https://www.kaggle.com/competitions/forest-cover-type-prediction/data) dataset, save csv locally (default path is *data/екфшт.csv* in repository's root).
-3. Make sure Python 3.9 and [Poetry](https://python-poetry.org/docs/) are installed on your machine (I use Poetry 1.1.13).
+3. Make sure Python 3.9 and [Poetry](https://python-poetry.org/docs/) are installed on your machine (I use Poetry 1.2.1).
 4. Install the project dependencies (*run this and following commands in a terminal, from the root of a cloned repository*):
 ```sh
 poetry install --no-dev
