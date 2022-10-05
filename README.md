@@ -10,7 +10,7 @@ This package allows you to train model for predicting forest cover type, predict
 
 ### Preparation
 1. Clone this repository to your machine.
-2. Download [Forest Covered Type Prediction](https://www.kaggle.com/competitions/forest-cover-type-prediction/data) dataset, save csv locally (default path is *data/екфшт.csv* in repository's root).
+2. Download [Forest Covered Type Prediction](https://www.kaggle.com/competitions/forest-cover-type-prediction/data) dataset, save csv locally (default path is *data/train.csv* in repository's root).
 3. Make sure Python 3.9 and [Poetry](https://python-poetry.org/docs/) are installed on your machine (I use Poetry 1.2.1).
 4. Install the project dependencies (*run this and following commands in a terminal, from the root of a cloned repository*):
 ```sh
@@ -85,3 +85,20 @@ poetry run pytest
 ```
 
 All necessary screenshots you can find via [link](https://github.com/DmitryKarpuk/9_evaluation_selection/blob/master/reports/report.md)
+
+## Model service.
+
+Model has been deploymented  by flask [link](https://flask.palletsprojects.com/en/2.2.x/). One way to create a WSGI server is to use waitress. This project was packed in a Docker container, you're able to run project on any machine.
+In order to run service install docker[link](https://www.docker.com/)
+Then build image
+```
+docker build -t forest_ml_service -f Docker/Dockerfile .
+```
+Now lets run container
+```
+docker run -d -p 9696:9696 forest_ml_service:latest
+```
+As a result, you can test service by using script src/forest_ml/app/predict_req.py.
+```
+poetry run predict_req [-p-i]
+```
