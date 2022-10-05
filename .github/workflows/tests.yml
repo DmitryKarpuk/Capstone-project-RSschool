@@ -10,5 +10,6 @@ jobs:
         python-version: 3.9.12
     - name: Install nox, poetry
       run: pip install nox==2022.8.7
+      run: pip install poetry==1.2.1
     - name: Run nox
       run: nox -r

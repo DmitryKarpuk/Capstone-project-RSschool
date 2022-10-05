@@ -40,4 +40,4 @@ def tests(session: Session) -> None:
     )
     session.install("-r", "temp.txt")
     os.unlink("temp.txt")
-    session.run("pytest", "--cov")
+    session.run("pytest")
