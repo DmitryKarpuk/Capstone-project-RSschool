@@ -51,9 +51,9 @@ Install all requirements (including dev requirements) to poetry environment:
 ```
 poetry install
 ```
-Install nox
+Activate poetry environment:
 ```
-pip install nox
+poetry shell
 ```
 Now you can use developer instruments, e.g. pytest:
 ```
@@ -61,21 +61,21 @@ poetry run pytest
 ```
 More conveniently, to run all sessions of testing and formatting in a single command, install and use [nox](https://nox.thea.codes/en/stable/): 
 ```
-nox [-r]
+poetry run nox [-r]
 ```
 Format your code with [black](https://github.com/psf/black) by using either nox or poetry:
 ```
-nox -[r]s black
+poetry run nox -[r]s black
 poetry run black src tests noxfile.py
 ```
 Lint your code with [flake8](https://pypi.org/project/flake8/) by using either nox or poetry:
 ```
-nox -[r]s lint
+poetry run nox -[r]s lint
 poetry run flake8 src tests noxfile.py
 ```
 Check typing of your code with [mypy](https://github.com/python/mypy) by using either nox or poetry:
 ```
-nox -[r]s mypy
+poetry run nox -[r]s lint nox -[r]s mypy
 poetry run mypy src tests noxfile.py
 ```
 Test your code with pytest [pytest](https://docs.pytest.org/en/7.1.x/) by using either nox or poetry:

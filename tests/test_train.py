@@ -6,7 +6,7 @@ import pytest
 import os
 
 
-from forest_ml.train import train
+from src.forest_ml.train import train
 
 parent_path = os.getcwd()
 default_arg = [

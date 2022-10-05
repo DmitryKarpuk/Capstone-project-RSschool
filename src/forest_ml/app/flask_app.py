@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, Response
-import click
 from joblib import load
 import pandas as pd
 
@@ -16,7 +15,7 @@ FOREST_TYPES = [
 MODEL_PATH = "data/model.joblib"
 model = load(MODEL_PATH)
 
-app = Flask('forest_type')
+app = Flask("forest_type")
 
 
 @app.route("/predict", methods=["POST"])
@@ -33,5 +32,5 @@ def predict() -> Response:
     return jsonify(result)
 
 
-if __name__=='__main__':
+if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=9696)
